@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arbeitszeit</title>
+<meta name="theme-color" content="#1d4f86">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    /* dunkles Farbschema */
+    --blau:#1d4f86;
+    --blau-dunkel:#143a64;
+    --blau-flaeche:#22303f;
+    --grau:#9aa3ae;
+    --grau-dunkel:#6b7480;
+    --flaeche:#3a3f46;
+    --karte:#2f333a;          /* dunkles Grau statt Weiss */
+    --linie:#4a505a;
+    --text:#d7dbe0;
+    --rot:#e07070;
+    --rot-flaeche:#43302f;
+    --gruen:#5fbe8a;
+    --gruen-flaeche:#2c3d33;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    background:linear-gradient(160deg,#23262b 0%,#181a1e 100%);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;align-items:center;justify-content:center;
+    padding:16px;
+  }
+  .tool{
+    background:var(--karte);
+    width:min(340px, 100%);
+    border-radius:12px;
+    box-shadow:0 6px 22px rgba(0,0,0,.45);
+    overflow:hidden;
+  }
+  header{
+    background:linear-gradient(135deg,var(--blau) 0%,var(--blau-dunkel) 100%);
+    color:#e8eef5;
+    padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  header h1{font-size:16px;font-weight:600;letter-spacing:.3px}
+  header img.logo{
+    height:28px;width:auto;
+    border-radius:4px;
+    background:#fff;
+    padding:2px;
+  }
+  .inhalt{padding:14px 16px 16px}
+  .block{margin-bottom:10px}
+  .block label{
+    display:block;
+    font-size:11px;font-weight:600;
+    color:var(--grau);
+    text-transform:uppercase;letter-spacing:.6px;
+    margin-bottom:4px;
+  }
+  .zeile{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+  .zeile:last-child{margin-bottom:0}
+  .abschnitt{
+    font-size:10px;color:var(--grau-dunkel);
+    width:14px;flex:none;text-align:center;
+  }
+  .feld{flex:1}
+  .feld input{
+    width:100%;
+    padding:7px 6px;
+    border:1px solid var(--linie);
+    border-radius:7px;
+    font-size:14px;
+    background:var(--flaeche);
+    color:var(--text);
+    text-align:center;
+    font-family:inherit;
+    color-scheme:dark;
+  }
+  .feld input:focus{
+    outline:none;
+    border-color:var(--blau);
+    background:var(--blau-flaeche);
+  }
+  .ergebnis{
+    border-top:1px solid var(--linie);
+    margin-top:12px;padding-top:12px;
+  }
+  .prozente{
+    display:flex;gap:8px;margin-bottom:10px;
+  }
+  .kachel{
+    flex:1;
+    border-radius:8px;
+    padding:8px 6px;
+    text-align:center;
+    transition:background .3s ease;
+  }
+  .kachel.mobil{background:var(--blau-flaeche)}
+  .kachel.anwesend{background:var(--blau-flaeche)}
+  .kachel .titel{font-size:11px;font-weight:600;color:var(--grau);text-transform:uppercase;letter-spacing:.4px}
+  /* Prozentzahlen bleiben hell und kraeftig */
+  .kachel .wert{font-size:19px;font-weight:700;margin-top:2px;transition:color .3s ease}
+  .kachel.mobil .wert{color:#6ca6e0}
+  .kachel.anwesend .wert{color:#c3cad2}
+  .kachel .zeit{font-size:11px;color:var(--grau);margin-top:1px}
+
+  /* Hervorhebung je nach Tagesergebnis */
+  .kachel.mobil.aktiv{background:var(--rot-flaeche)}
+  .kachel.mobil.aktiv .wert{color:var(--rot)}
+  .kachel.anwesend.aktiv{background:var(--gruen-flaeche)}
+  .kachel.anwesend.aktiv .wert{color:var(--gruen)}
+
+  .status{
+    border-radius:8px;
+    padding:9px 12px;
+    text-align:center;
+    font-size:13px;
+    font-weight:600;
+    background:var(--flaeche);
+    color:var(--grau);
+    transition:background .3s ease, color .3s ease;
+  }
+  .status.ist-anwesend{
+    background:var(--gruen-flaeche);
+    color:var(--gruen);
+    border:1px solid #3f6b52;
+  }
+  .status.ist-mobil{
+    background:var(--rot-flaeche);
+    color:var(--rot);
+    border:1px solid #7a4a48;
+  }
+  .status small{
+    display:block;font-weight:400;font-size:11px;opacity:.8;margin-top:1px;
+  }
+  .gesamt{
+    text-align:center;
+    font-size:11px;color:var(--grau);
+    margin-top:8px;
+  }
+  .gesamt b{color:var(--text)}
+  .plus{
+    display:block;
+    width:100%;
+    margin-top:5px;
+    padding:4px 0;
+    font-family:inherit;
+    font-size:13px;font-weight:600;
+    color:var(--grau);
+    background:var(--flaeche);
+    border:1px dashed var(--linie);
+    border-radius:7px;
+    cursor:pointer;
+  }
+  .plus:hover{color:var(--text);border-color:var(--grau)}
+  .maxmobil{
+    text-align:center;
+    font-size:11px;color:var(--grau);
+    margin-top:5px;
+    line-height:1.5;
+  }
+  .maxmobil b{color:var(--text)}
+  .maxmobil .ok{color:var(--gruen);font-weight:600}
+  .maxmobil .zuviel{color:var(--rot);font-weight:600}
+
+  /* Popup-Modus: Inhalt oben buendig, Fenstergroesse bestimmt das Skript */
+  body.popup{
+    display:block;
+    min-height:0;
+    overflow:hidden;
+  }
+  body.popup .tool{margin:0 auto}
+
+  /* Startseite: Tool im passenden Fenster oeffnen */
+  .starter{
+    position:fixed;inset:0;
+    background:linear-gradient(160deg,#23262b 0%,#181a1e 100%);
+    display:none;
+    align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;
+    z-index:10;text-align:center;padding:20px;
+  }
+  body.start .starter{display:flex}
+  .starter button{
+    font-family:inherit;
+    font-size:15px;font-weight:600;
+    color:#e8eef5;
+    background:linear-gradient(135deg,var(--blau) 0%,var(--blau-dunkel) 100%);
+    border:none;border-radius:10px;
+    padding:14px 26px;
+    cursor:pointer;
+    box-shadow:0 6px 22px rgba(0,0,0,.45);
+  }
+  .starter button:hover{filter:brightness(1.15)}
+  .starter p{font-size:12px;color:var(--grau);max-width:280px}
+</style>
+</head>
+<body>
+  <div class="starter">
+    <button id="startKnopf">Arbeitszeit öffnen</button>
+    <p>Das Tool öffnet sich in einem eigenen, passend großen Fenster. Dieses Fenster kannst du danach schließen.</p>
+  </div>
+  <div class="tool">
+    <header>
+      <h1>Arbeitszeit</h1>
+      <img class="logo" src="data:image/png;base64,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" alt="Rolls-Royce Logo">
+    </header>
+    <div class="inhalt">
+      <div class="block">
+        <label>Mobil · Beginn / Ende</label>
+        <div id="mobilZeilen"></div>
+        <button type="button" class="plus" data-ziel="mobilZeilen">+ Zeile hinzufügen</button>
+      </div>
+      <div class="block">
+        <label>Anwesend · Beginn / Ende</label>
+        <div id="anwZeilen"></div>
+        <button type="button" class="plus" data-ziel="anwZeilen">+ Zeile hinzufügen</button>
+      </div>
+
+      <div class="ergebnis">
+        <div class="prozente">
+          <div class="kachel mobil" id="kachelMobil">
+            <div class="titel">Mobil</div>
+            <div class="wert" id="mobilProzent">0&nbsp;%</div>
+            <div class="zeit" id="mobilZeit">0:00 h</div>
+          </div>
+          <div class="kachel anwesend" id="kachelAnw">
+            <div class="titel">Anwesend</div>
+            <div class="wert" id="anwProzent">0&nbsp;%</div>
+            <div class="zeit" id="anwZeit">0:00 h</div>
+          </div>
+        </div>
+        <div class="status" id="status">Zeiten eingeben</div>
+        <div class="gesamt">Gesamt: <b id="gesamtZeit">0:00 h</b></div>
+        <div class="maxmobil" id="maxMobil"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Regel: Ein Tag zaehlt als ANWESEND, wenn mindestens 2/3 der
+  // Gesamtarbeitszeit anwesend geleistet wurden - sonst zaehlt er als MOBIL.
+  const SCHWELLE = 2 / 3;
+
+  // ---- Dynamische Eingabezeilen ----
+  function neueZeile(container){
+    const nr = container.children.length + 1;
+    const zeile = document.createElement("div");
+    zeile.className = "zeile";
+    zeile.innerHTML =
+      '<span class="abschnitt">' + nr + '</span>' +
+      '<div class="feld"><input type="time" class="von"></div>' +
+      '<div class="feld"><input type="time" class="bis"></div>';
+    zeile.querySelectorAll("input").forEach(i => i.addEventListener("input", rechnen));
+    container.appendChild(zeile);
+  }
+
+  const mobilZeilen = document.getElementById("mobilZeilen");
+  const anwZeilen   = document.getElementById("anwZeilen");
+
+  // Start: je zwei Zeilen wie bisher
+  neueZeile(mobilZeilen); neueZeile(mobilZeilen);
+  neueZeile(anwZeilen);   neueZeile(anwZeilen);
+
+  document.querySelectorAll(".plus").forEach(knopf => {
+    knopf.addEventListener("click", () => {
+      neueZeile(document.getElementById(knopf.dataset.ziel));
+      fensterAnpassen();
+    });
+  });
+
+  function inMinuten(input){
+    if(!input.value) return null;
+    const [h, m] = input.value.split(":").map(Number);
+    return h * 60 + m;
+  }
+
+  function summe(container){
+    let gesamt = 0;
+    container.querySelectorAll(".zeile").forEach(z => {
+      const von = inMinuten(z.querySelector(".von"));
+      const bis = inMinuten(z.querySelector(".bis"));
+      if(von === null || bis === null) return;
+      let d = bis - von;
+      if(d < 0) d += 24 * 60; // ueber Mitternacht
+      gesamt += d;
+    });
+    return gesamt;
+  }
+
+  function alsZeit(min){
+    return Math.floor(min/60) + ":" + String(min%60).padStart(2,"0") + " h";
+  }
+
+  function prozent(p){
+    return p.toFixed(1).replace(".", ",") + "&nbsp;%";
+  }
+
+  // Uhrzeit, bis zu der noch mobil gearbeitet werden kann,
+  // ohne die 2/3-Grenze zu ueberschreiten.
+  // Ausgangspunkt (in dieser Reihenfolge):
+  // 1. eine offene Mobil-Zeile (Beginn ohne Ende) -> deren Beginn
+  // 2. das spaeteste eingetragene Mobil-Ende
+  // 3. die aktuelle Uhrzeit
+  function capUhrzeit(restMin){
+    let anker = null;
+
+    // offene Zeile?
+    mobilZeilen.querySelectorAll(".zeile").forEach(z => {
+      const von = inMinuten(z.querySelector(".von"));
+      const bis = inMinuten(z.querySelector(".bis"));
+      if(von !== null && bis === null && anker === null) anker = von;
+    });
+
+    // sonst: spaetestes Mobil-Ende
+    if(anker === null){
+      mobilZeilen.querySelectorAll(".zeile").forEach(z => {
+        const bis = inMinuten(z.querySelector(".bis"));
+        if(bis !== null && (anker === null || bis > anker)) anker = bis;
+      });
+    }
+
+    // sonst: jetzt
+    if(anker === null){
+      const jetzt = new Date();
+      anker = jetzt.getHours() * 60 + jetzt.getMinutes();
+    }
+
+    const ziel = (anker + restMin) % (24 * 60);
+    return String(Math.floor(ziel/60)).padStart(2,"0") + ":" + String(ziel%60).padStart(2,"0");
+  }
+
+  function rechnen(){
+    const mobil  = summe(mobilZeilen);
+    const anw    = summe(anwZeilen);
+    const gesamt = mobil + anw;
+
+    const pMobil = gesamt > 0 ? mobil / gesamt * 100 : 0;
+    const pAnw   = gesamt > 0 ? anw   / gesamt * 100 : 0;
+
+    document.getElementById("mobilProzent").innerHTML = prozent(pMobil);
+    document.getElementById("anwProzent").innerHTML   = prozent(pAnw);
+    document.getElementById("mobilZeit").textContent  = alsZeit(mobil);
+    document.getElementById("anwZeit").textContent    = alsZeit(anw);
+    document.getElementById("gesamtZeit").textContent = alsZeit(gesamt);
+
+    const status = document.getElementById("status");
+    const kachelMobil = document.getElementById("kachelMobil");
+    const kachelAnw   = document.getElementById("kachelAnw");
+    const maxMobil    = document.getElementById("maxMobil");
+
+    status.classList.remove("ist-anwesend","ist-mobil");
+    kachelMobil.classList.remove("aktiv");
+    kachelAnw.classList.remove("aktiv");
+
+    if(gesamt === 0){
+      status.textContent = "Zeiten eingeben";
+      maxMobil.innerHTML = "";
+      return;
+    }
+
+    // Max. Mobilzeit fuer einen Anwesend-Tag:
+    // anw / (anw + mobil) >= 2/3  <=>  mobil <= anw / 2
+    const maxM = Math.floor(anw / 2);
+    if(anw > 0){
+      const rest = maxM - mobil;
+      if(rest >= 0){
+        let capText = "";
+        const cap = capUhrzeit(rest);
+        if(cap !== null){
+          capText = " · mobil möglich bis <b>" + cap + " Uhr</b>";
+        }
+        maxMobil.innerHTML = "Max. mobil für Anwesend-Tag: <b>" + alsZeit(maxM) + "</b>" +
+          "<br><span class=\"ok\">noch " + alsZeit(rest) + " Spielraum</span>" + capText;
+      } else {
+        maxMobil.innerHTML = "Max. mobil für Anwesend-Tag: <b>" + alsZeit(maxM) + "</b>" +
+          "<br><span class=\"zuviel\">um " + alsZeit(-rest) + " überschritten</span>";
+      }
+    } else {
+      maxMobil.innerHTML = "";
+    }
+
+    if(anw / gesamt >= SCHWELLE){
+      status.classList.add("ist-anwesend");
+      kachelAnw.classList.add("aktiv");
+      status.innerHTML = "Tag zählt als: ANWESEND<small>Anwesenheit ≥ 2/3 der Arbeitszeit</small>";
+    } else {
+      status.classList.add("ist-mobil");
+      kachelMobil.classList.add("aktiv");
+      status.innerHTML = "Tag zählt als: MOBIL<small>Anwesenheit < 2/3 der Arbeitszeit</small>";
+    }
+  }
+
+  // --- Fensterlogik ---------------------------------------------------
+  // Wird die Datei normal geoeffnet (grosses Fenster), erscheint nur ein
+  // Startknopf. Ein Klick oeffnet das Tool per window.open in einem
+  // Popup mit fester Groesse - das funktioniert unabhaengig von
+  // Edge-Richtlinien, da die Groesse hier vom Skript vorgegeben wird.
+  const istPopup = location.search.includes("popup=1");
+  const mobilGeraet = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+  const fensterKlein = window.innerWidth <= 420 && window.innerHeight <= 760;
+
+  if(!istPopup && !fensterKlein && !mobilGeraet){
+    document.body.classList.add("start");
+    document.getElementById("startKnopf").addEventListener("click", () => {
+      const url = location.href.split("?")[0] + "?popup=1";
+      // Startgroesse grob mittig - die Feinjustierung macht das Popup selbst
+      const links = Math.max(0, Math.round((screen.availWidth  - 340) / 2));
+      const oben  = Math.max(0, Math.round((screen.availHeight - 700) / 2));
+      const w = window.open(url, "arbeitszeitTool",
+        `width=340,height=700,left=${links},top=${oben},menubar=no,toolbar=no,location=no,status=no`);
+      if(w){
+        // Startfenster nach Moeglichkeit schliessen
+        setTimeout(() => window.close(), 300);
+      }
+    });
+  }
+
+  // Im Popup: Fenster exakt auf die Hoehe des Tools anpassen und mittig platzieren.
+  // resizeTo/moveTo sind erlaubt, weil dieses Fenster per window.open erzeugt wurde.
+  // Fensterrahmen (Titelleiste etc.) einmalig beim Start messen,
+  // solange noch kein Scrollbalken die Werte verfaelscht.
+  let rahmenB = 0, rahmenH = 0;
+
+  let anpassungGeplant = null;
+  function fensterAnpassen(){
+    if(!istPopup) return;
+    // Mehrfach-Aufrufe buendeln: erst messen, wenn das Layout fertig ist
+    if(anpassungGeplant) clearTimeout(anpassungGeplant);
+    anpassungGeplant = setTimeout(() => {
+      anpassungGeplant = null;
+      const tool = document.querySelector(".tool");
+      const zielB = Math.min(screen.availWidth,
+        Math.ceil(tool.getBoundingClientRect().width)  + 32 + rahmenB);
+      const zielH = Math.min(screen.availHeight,
+        Math.ceil(tool.getBoundingClientRect().height) + 32 + rahmenH);
+      // Nur anpassen, wenn sich wirklich etwas geaendert hat (verhindert Zickzack)
+      if(Math.abs(window.outerWidth - zielB) <= 2 && Math.abs(window.outerHeight - zielH) <= 2) return;
+      window.resizeTo(zielB, zielH);
+      window.moveTo(
+        Math.max(0, Math.round((screen.availWidth  - zielB) / 2)),
+        Math.max(0, Math.round((screen.availHeight - zielH) / 2))
+      );
+    }, 120);
+  }
+
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+
+  if(istPopup){
+    document.body.classList.add("popup");
+    window.addEventListener("load", () => {
+      rahmenB = Math.max(0, window.outerWidth  - window.innerWidth);
+      rahmenH = Math.max(0, window.outerHeight - window.innerHeight);
+      fensterAnpassen();
+
+      // Hoehenaenderungen des Tools beobachten (neue Zeilen,
+      // Uhrzeit-Angabe, Statusanzeige) und Fenster mitwachsen lassen
+      const beobachter = new ResizeObserver(() => fensterAnpassen());
+      beobachter.observe(document.querySelector(".tool"));
+    });
+  }
+</script>
+</body>
+</html>
