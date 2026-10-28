@@ -266,9 +266,45 @@
   const mobilZeilen = document.getElementById("mobilZeilen");
   const anwZeilen   = document.getElementById("anwZeilen");
 
+  // ---- Speichern im Browser des Handys ----
+  const SPEICHER_KEY = "arbeitszeit-daten";
+
+  function zeilenWerte(container){
+    return [...container.querySelectorAll(".zeile")].map(z => [
+      z.querySelector(".von").value,
+      z.querySelector(".bis").value
+    ]);
+  }
+
+  function speichern(){
+    try{
+      localStorage.setItem(SPEICHER_KEY, JSON.stringify({
+        mobil: zeilenWerte(mobilZeilen),
+        anw:   zeilenWerte(anwZeilen)
+      }));
+    }catch(e){ /* Speicher nicht verfuegbar - App funktioniert trotzdem */ }
+  }
+
+  function laden(){
+    try{
+      const daten = JSON.parse(localStorage.getItem(SPEICHER_KEY) || "null");
+      if(!daten) return;
+      [[mobilZeilen, daten.mobil], [anwZeilen, daten.anw]].forEach(([c, werte]) => {
+        if(!Array.isArray(werte)) return;
+        werte.forEach((paar, i) => {
+          while(c.children.length <= i) neueZeile(c);
+          c.children[i].querySelector(".von").value = paar[0] || "";
+          c.children[i].querySelector(".bis").value = paar[1] || "";
+        });
+      });
+    }catch(e){ /* kaputte Daten ignorieren */ }
+  }
+
   // Start: je zwei Zeilen wie bisher
   neueZeile(mobilZeilen); neueZeile(mobilZeilen);
   neueZeile(anwZeilen);   neueZeile(anwZeilen);
+  laden();
+  rechnen();
 
   document.querySelectorAll(".plus").forEach(knopf => {
     knopf.addEventListener("click", () => {
@@ -339,6 +375,7 @@
   }
 
   function rechnen(){
+    speichern();
     const mobil  = summe(mobilZeilen);
     const anw    = summe(anwZeilen);
     const gesamt = mobil + anw;

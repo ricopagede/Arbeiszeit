@@ -1,4 +1,4 @@
-const CACHE = "arbeitszeit-v1";
+const CACHE = "arbeitszeit-v2";
 const DATEIEN = ["./", "index.html", "manifest.json", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
